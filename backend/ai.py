@@ -2,20 +2,14 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# 1. Force Python to load the .env file
 load_dotenv()
 
-# 2. Get the key we just named in the .env file
 my_api_key = os.getenv("GOOGLE_API_KEY")
 
-# 3. Explicitly hand the key to Google
 genai.configure(api_key=my_api_key)
 
-# Load environment variables (API keys)
 load_dotenv()
 
-# Configure the Gemini API
-# This requires GEMINI_API_KEY to be set in your .env file
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def buildSystemPrompt(profile: dict) -> str:
@@ -30,23 +24,19 @@ def buildSystemPrompt(profile: dict) -> str:
     style = profile.get("learning_style", "visual")
     dependency = profile.get("dependency_level", "main")
 
-    # Determine weak and strong subjects based on the 1-5 dial scores from onboarding
     weak_subjects = [subj for subj, score in scores.items() if score <= 2]
     strong_subjects = [subj for subj, score in scores.items() if score >= 4]
 
-    # Base Persona
     prompt = (
         f"You are StudyAI, an expert, encouraging, and highly personalized digital learning assistant for {name}, "
         f"who is a {grade} student studying under the {board} curriculum.\n\n"
     )
 
-    # Core Educational Rules
     prompt += "CORE BEHAVIOR:\n"
     prompt += "- Never just give direct answers to homework or questions. Guide the student to discover the answer themselves.\n"
     prompt += "- Break down complex topics into bite-sized, easy-to-understand pieces.\n"
     prompt += "- Use the Socratic method: ask probing questions to check their understanding.\n"
 
-    # Deep Personalization from Onboarding Data
     prompt += "\nPERSONALIZATION INSTRUCTIONS:\n"
     
     if style:
@@ -75,15 +65,12 @@ async def ask_ai(user_message: str, chat_history: list, profile: dict) -> str:
     and streams or returns the generated response.
     """
     system_instruction = buildSystemPrompt(profile)
-    
-    # gemini-1.5-flash is ideal for chatbots: it's fast, highly capable, and heavily supported on the free tier
+
     model = genai.GenerativeModel(
         model_name="gemini-2.5-flash",
         system_instruction=system_instruction
     )
-    
-    # Map the standard frontend history format [{"role": "user/assistant", "content": "..."}]
-    # into Gemini's required format [{"role": "user/model", "parts": ["..."]}]
+
     formatted_history = []
     for msg in chat_history:
         # Convert frontend 'assistant' role to Gemini's 'model' role
@@ -92,11 +79,9 @@ async def ask_ai(user_message: str, chat_history: list, profile: dict) -> str:
             "role": role,
             "parts": [msg.get("content", "")]
         })
-        
-    # Start the chat session with the mapped history so the bot remembers the conversation
+
     chat = model.start_chat(history=formatted_history)
-    
-    # Send the newest message
+
     response = chat.send_message(user_message)
     
     return response.text
